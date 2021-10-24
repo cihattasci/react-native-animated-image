@@ -20,6 +20,7 @@ export default function App() {
     const scale = new Animated.Value(1)
     const translateX = useSharedValue(0);
     const translateY = useSharedValue(0);
+    const scales = useSharedValue(0);
 
     const panGestureEvent = useAnimatedGestureHandler({
       onStart: (event, context) => {
@@ -27,8 +28,11 @@ export default function App() {
         context.translateY = translateY.value;
       },
       onActive: (event, context) => {
-        translateX.value = event.translationX + context.translateX;
-        translateY.value = event.translationY + context.translateY;
+        scales.value = event.scale
+        if (event.scale == scales.value) {
+          translateX.value = event.translationX + context.translateX;
+          translateY.value = event.translationY + context.translateY;
+        }
       },
       onEnd: () => {
         
@@ -61,7 +65,7 @@ export default function App() {
           <ImageBackground
           source={require('./nature.png')}
           style={{width: '100%', height: 150, justifyContent: 'center', alignItems: 'center'}}>
-          <PanGestureHandler onGestureEvent={panGestureEvent}>
+          <PanGestureHandler maxPointers={1} onGestureEvent={panGestureEvent}>
             <Animated.View style={[styles.animatedArea, newStyle]} >
               <PinchGestureHandler
                 onGestureEvent={pinchGestureEvent}
