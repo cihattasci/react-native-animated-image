@@ -53,7 +53,7 @@ export default function App() {
   ], {useNativeDriver: true})
 
   const pinchStateChange = (event) => {
-    
+    console.warn(event.nativeEvent)
   }
     return (
       <SafeAreaView style={styles.main}>
