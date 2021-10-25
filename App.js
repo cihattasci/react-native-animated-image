@@ -70,18 +70,26 @@ export default function App() {
     const save = async () => {
       const imageUri = await viewShot.current.capture()
       setImage(imageUri)
-      let result = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
-        {
-          title: 'Permission Explanation',
-          message: 'ReactNativeForYou would like to access your photos!',
-        },
-      );
-      if (result !== 'granted') {
-        console.log('Access to pictures was denied');
-        return;
+      
+      if (Platform.OS === 'android') {
+        let result = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
+          {
+            title: 'Permission Explanation',
+            message: 'ReactNativeForYou would like to access your photos!',
+          },
+        );
+        if (result !== 'granted') {
+          console.log('Access to pictures was denied');
+          return;
+        }
       }
-      CameraRoll.save(imageUri)
+
+      try {
+        CameraRoll.save(imageUri)
+      } catch (error) {
+        console.log("save",error)
+      }
     }
 
     return (
@@ -89,7 +97,7 @@ export default function App() {
         <ViewShot
           ref={viewShot}
           captureMode="mount"
-          options={{format:'jpg', quality: 1, result: 'data-uri'}}
+          options={{format:'jpg', quality: 1, result: Platform.OS === 'ios' ? 'data-uri' : 'tmpfile'}}
          >
           <ImageBackground
             source={require('./nature.png')}

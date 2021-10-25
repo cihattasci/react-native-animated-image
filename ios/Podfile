@@ -12,6 +12,8 @@ target 'demoPinch' do
     :hermes_enabled => false
   )
 
+  pod 'react-native-cameraroll', :path => '../node_modules/@react-native-community/cameraroll'
+
   target 'demoPinchTests' do
     inherit! :complete
     # Pods for testing
