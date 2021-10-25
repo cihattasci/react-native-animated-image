@@ -1,26 +1,30 @@
-import React from 'react';
-import { ImageBackground, SafeAreaView, StyleSheet, TouchableOpacity, View, Text, PermissionsAndroid, Image } from 'react-native';
+import React, {createRef, useRef, useState} from 'react';
+import { ImageBackground, SafeAreaView, StyleSheet, TouchableOpacity, View, Text, PermissionsAndroid, Image, Dimensions } from 'react-native';
 import CameraRoll from "@react-native-community/cameraroll";
+import ViewShot, {captureRef} from 'react-native-view-shot';
 import Animated, {
   runOnJS,
   useAnimatedGestureHandler,
   useAnimatedStyle,
   useSharedValue,
-  withSpring,
 } from 'react-native-reanimated';
-
 import {
   PanGestureHandler,
   PinchGestureHandler,
 } from 'react-native-gesture-handler';
 
-let SIZE = 100.0;
+const bgHeight = 150.0;
 
 export default function App() {
+    const viewShot = useRef();
     const scale = new Animated.Value(1)
     const translateX = useSharedValue(0);
     const translateY = useSharedValue(0);
     const scales = useSharedValue(0);
+    const {width, height} = Dimensions.get('screen')
+    const SIZE = 100;
+    const ratio = width / SIZE;
+    const [image, setImage] = useState(null)
 
     const panGestureEvent = useAnimatedGestureHandler({
       onStart: (event, context) => {
@@ -29,7 +33,8 @@ export default function App() {
       },
       onActive: (event, context) => {
         scales.value = event.scale
-        if (event.scale == scales.value) {
+        if (event.scale == scales.value && event.translationY + context.translateY < bgHeight - SIZE 
+            ) {
           translateX.value = event.translationX + context.translateX;
           translateY.value = event.translationY + context.translateY;
         }
@@ -39,56 +44,78 @@ export default function App() {
       },
     });
 
-  const newStyle = useAnimatedStyle(() => {
-    return {
-      transform: [
-        {
-          translateX: translateX.value,
-        },
-        {
-          translateY: translateY.value,
-        },
-      ],
-    };
-  });
+    const newStyle = useAnimatedStyle(() => {
+      return {
+        transform: [
+          {
+            translateX: translateX.value,
+          },
+          {
+            translateY: translateY.value,
+          },
+        ],
+      };
+    });
 
-  const pinchGestureEvent = Animated.event([
-    {nativeEvent: {scale: scale}}
-  ], {useNativeDriver: true})
+    const pinchGestureEvent = Animated.event([
+      {nativeEvent: {scale: scale}}
+    ], {useNativeDriver: true})
 
-  const pinchStateChange = (event) => {
-    console.warn(event.nativeEvent)
-  }
+    const pinchStateChange = (event) => {
+      if (event.nativeEvent.scale > ratio && (event.nativeEvent.state === 5 || event.nativeEvent.state === 4)) {
+        scale.setValue(ratio)
+      }
+    }
+
+    const save = async () => {
+      const imageUri = await viewShot.current.capture()
+      setImage(imageUri);
+      CameraRoll.save(imageUri)
+    }
+
     return (
       <SafeAreaView style={styles.main}>
-        <View>
+        <ViewShot
+          ref={viewShot}
+          captureMode="mount"
+          options={{format:'jpg', quality: 1, result: 'data-uri'}}
+         >
           <ImageBackground
-          source={require('./nature.png')}
-          style={{width: '100%', height: 150, justifyContent: 'center', alignItems: 'center'}}>
-          <PanGestureHandler maxPointers={1} onGestureEvent={panGestureEvent}>
-            <Animated.View style={[styles.animatedArea, newStyle]} >
+            source={require('./nature.png')}
+            style={{width: '100%', height: 150, justifyContent: 'center', alignItems: 'center'}}>
+          <PanGestureHandler 
+            maxPointers={1}
+            onGestureEvent={panGestureEvent}
+            >
+            <Animated.View
+             style={[styles.animatedArea, newStyle]} >
               <PinchGestureHandler
                 onGestureEvent={pinchGestureEvent}
-                onHandlerStateChange={pinchStateChange}
-              >
+                onHandlerStateChange={pinchStateChange}>
                 <Animated.Image
                   source={require('./car.png')}
-                  style={[styles.image, {
+                  style={{
                     transform: [
                       {scale: scale}
-                    ]
-                  }]}
+                    ],
+                    width: SIZE, 
+                    height: SIZE,
+                  }}
                 />
               </PinchGestureHandler>
             </Animated.View>
           </PanGestureHandler>
           </ImageBackground>
-        </View>
-        <TouchableOpacity onPress={this.save}>
+        </ViewShot>
+        <TouchableOpacity onPress={save}>
           <View style={{justifyContent: 'center', alignItems: 'center', marginTop: 50}}>
             <Text>Save photo</Text>
           </View>
         </TouchableOpacity>
+        <Image
+          source={{uri: image}}
+          style={{width: '100%', height: 160, marginTop: 200}}
+        />
       </SafeAreaView>
     );
 }
@@ -97,66 +124,6 @@ const styles = StyleSheet.create({
   main: {
     flex: 1,
   },
-  image: {
-    width: SIZE, 
-    height: SIZE
+  animatedArea: {
   }
 })
-
-
-
-  /*
-  <View>
-          <ImageBackground style={{width: '100%', height: '50%', backgroundColor: `${this.state.color}`, justifyContent: 'center', alignItems: 'center'}}>
-            <Image
-              source={require('./car.png')}
-              style={{width: 100, height: 100}}
-            />
-          </ImageBackground>
-        </View>
-  <View style={{height: 55, alignItems: 'center', width: '100%'}}>
-          <FlatList
-            data={this.colors}
-            renderItem={({item}) => this.renderColors(item)}
-            horizontal
-          />
-        </View>*/
-
-        /*
-        constructor(props) {
-    super(props);
-    this.state = {
-      color: 'red'
-    };
-    //this.colors = ['yellow', 'blue', 'red', 'green'];
-  }
-  
-  hasAndroidPermission = async () => {
-    const permission = PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE;
-  
-    const hasPermission = await PermissionsAndroid.check(permission);
-    if (hasPermission) {
-      return true;
-    }
-  
-    const status = await PermissionsAndroid.request(permission);
-    return status === 'granted';
-  }
-
-  save = async () => {
-    if (Platform.OS === "android" && !(await hasAndroidPermission())) {
-      return;
-    }
-  
-    CameraRoll.save('./nature.png')
-  }
-
-  renderColors = color => {
-    return(
-      <TouchableOpacity onPress={() => this.setState({ color })}>
-        <View
-          style={{backgroundColor: color, width: 50, height: 50, borderRadius: 5}}
-        />
-      </TouchableOpacity>
-    )
-  }*/
