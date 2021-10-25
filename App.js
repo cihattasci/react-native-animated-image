@@ -1,5 +1,5 @@
-import React, {createRef, useRef, useState} from 'react';
-import { ImageBackground, SafeAreaView, StyleSheet, TouchableOpacity, View, Text, PermissionsAndroid, Image, Dimensions } from 'react-native';
+import React, {useRef, useState} from 'react';
+import { ImageBackground, SafeAreaView, StyleSheet, TouchableOpacity, View, Text, PermissionsAndroid, Image, Dimensions, Platform } from 'react-native';
 import CameraRoll from "@react-native-community/cameraroll";
 import ViewShot, {captureRef} from 'react-native-view-shot';
 import Animated, {
@@ -69,7 +69,18 @@ export default function App() {
 
     const save = async () => {
       const imageUri = await viewShot.current.capture()
-      setImage(imageUri);
+      setImage(imageUri)
+      let result = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
+        {
+          title: 'Permission Explanation',
+          message: 'ReactNativeForYou would like to access your photos!',
+        },
+      );
+      if (result !== 'granted') {
+        console.log('Access to pictures was denied');
+        return;
+      }
       CameraRoll.save(imageUri)
     }
 
