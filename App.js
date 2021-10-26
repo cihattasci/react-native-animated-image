@@ -46,7 +46,7 @@ export default function App() {
       },
       onActive: (event, context) => {
         scales.value = event.scale
-        if (event.scale == scales.value/* && event.translationY + context.translateY < bgHeight - SIZE*/
+        if (event.scale == scales.value && event.translationY + context.translateY < bgHeight - SIZE
             ) {
           translateX.value = event.translationX + context.translateX;
           translateY.value = event.translationY + context.translateY;
@@ -80,7 +80,7 @@ export default function App() {
       }
     }
 
-    permission = async () => {
+    const permission = async () => {
       if (Platform.OS === 'android') {
         let result = await PermissionsAndroid.request(
           PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
@@ -131,28 +131,28 @@ export default function App() {
               simultaneousHandlers={[rotationRef, pinchRef]}
               >
               <Animated.View
-              style={[styles.animatedArea, newStyle]} >
+              style={[newStyle, {flex: 1,}]} >
               <RotationGestureHandler
                 ref={rotationRef}
-                simultaneousHandlers={pinchRef}
+                minPointers={2}
+                //simultaneousHandlers={pinchRef}
                 onGestureEvent={_onRotateGestureEvent}
                 onHandlerStateChange={_onRotateHandlerStateChange}>
                   <Animated.View style={[
-                    styles.wrapper,
-                    newStyle,
-                    {transform: [
-                      {rotate: _rotateStr},
-                    ],
-                    },
-                    ]}>
+                    {flex: 1},
+                    {transform: [{rotate: _rotateStr}]}]}>
                     <PinchGestureHandler
+                      ref={pinchRef}
+                      minPointers={2}
+                      //simultaneousHandlers={rotationRef}
                       onGestureEvent={pinchGestureEvent}
                       onHandlerStateChange={pinchStateChange}>
                       <Animated.Image
                         source={require('./car.png')}
                         style={{
                           transform: [
-                            {scale: scale}
+                            {scale: scale},
+                            {rotate: _rotateStr}
                           ],
                           width: SIZE, 
                           height: SIZE,
