@@ -3,10 +3,10 @@ import { ImageBackground, SafeAreaView, StyleSheet, TouchableOpacity, View, Text
 import CameraRoll from "@react-native-community/cameraroll";
 import ViewShot, {captureRef} from 'react-native-view-shot';
 import Animated, {
-  runOnJS,
   useAnimatedGestureHandler,
   useAnimatedStyle,
   useSharedValue,
+  withTiming,
 } from 'react-native-reanimated';
 import {
   PanGestureHandler,
@@ -20,23 +20,27 @@ export default function App() {
     const viewShot = useRef();
     const rotationRef = useRef();
     const pinchRef = useRef();
-    const scale = new Animated.Value(1)
+    const _baseScale = new Animated.Value(1);
+    const _pinchScale = new Animated.Value(1);
+    const _scale = Animated.multiply(_baseScale, _pinchScale);
+    let _lastScale = 1;
+    let _lastRotate = 0;
     const translateX = useSharedValue(0);
     const translateY = useSharedValue(0);
     const scales = useSharedValue(0);
+    let SIZE = 100
     const _rotate = new Animated.Value(0);
     const _rotateStr = _rotate.interpolate({
         inputRange: [-100, 100],
         outputRange: ['-100rad', '100rad'],
     });
-    let _lastRotate = 0;
     const _onRotateGestureEvent = Animated.event(
         [{nativeEvent: {rotation: _rotate}}],
         {useNativeDriver: true}
     );
     const {width, height} = Dimensions.get('screen')
-    const SIZE = 100;
-    const ratio = width / SIZE;
+    //const SIZE = 100;
+    //const ratio = width / SIZE;
     //const [image, setImage] = useState(null)
 
     const panGestureEvent = useAnimatedGestureHandler({
@@ -46,14 +50,13 @@ export default function App() {
       },
       onActive: (event, context) => {
         scales.value = event.scale
-        if (event.scale == scales.value && event.translationY + context.translateY < bgHeight - SIZE
+        if (event.scale == scales.value && event.translationY + context.translateY < 50
             ) {
           translateX.value = event.translationX + context.translateX;
           translateY.value = event.translationY + context.translateY;
         }
       },
-      onEnd: () => {
-        
+      onEnd: (event) => {
       },
     });
 
@@ -70,13 +73,23 @@ export default function App() {
       };
     });
 
+    const _onRotateHandlerStateChange = event => {
+      if (event.nativeEvent.oldState === 4) {
+        _lastRotate += event.nativeEvent.rotation;
+        //_rotate.setOffset(_lastRotate);
+        _rotate.setValue(_lastRotate);
+      }
+    };
+
     const pinchGestureEvent = Animated.event([
-      {nativeEvent: {scale: scale}}
+      {nativeEvent: {scale: _pinchScale}}
     ], {useNativeDriver: true})
 
     const pinchStateChange = (event) => {
-      if (event.nativeEvent.scale > ratio && (event.nativeEvent.state === 5 || event.nativeEvent.state === 4)) {
-        scale.setValue(ratio)
+      if (event.nativeEvent.oldState === 4) {
+        _lastScale *= event.nativeEvent.scale;
+        _baseScale.setValue(_lastScale);
+        _pinchScale.setValue(1);
       }
     }
 
@@ -86,11 +99,10 @@ export default function App() {
           PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
           {
             title: 'Permission Explanation',
-            message: 'ReactNativeForYou would like to access your photos!',
+            message: 'App would like to access your photos!',
           },
         );
         if (result !== 'granted') {
-          console.log('Access to pictures was denied');
           return;
         }
       }
@@ -106,14 +118,6 @@ export default function App() {
         console.warn("save",error)
       }
     }
-
-    const _onRotateHandlerStateChange = event => {
-      if (event.nativeEvent.state === 5) {
-          _lastRotate += event.nativeEvent.rotation;
-          //_rotate.setValue(_lastRotate);
-          //_rotate.setValue(0);
-      }
-    };
 
     return (
       <SafeAreaView style={styles.main}>
@@ -131,11 +135,11 @@ export default function App() {
               simultaneousHandlers={[rotationRef, pinchRef]}
               >
               <Animated.View
-              style={[newStyle, {flex: 1,}]} >
+              style={[newStyle, {flex: 1}]} >
               <RotationGestureHandler
                 ref={rotationRef}
                 minPointers={2}
-                //simultaneousHandlers={pinchRef}
+                simultaneousHandlers={pinchRef}
                 onGestureEvent={_onRotateGestureEvent}
                 onHandlerStateChange={_onRotateHandlerStateChange}>
                   <Animated.View style={[
@@ -144,14 +148,15 @@ export default function App() {
                     <PinchGestureHandler
                       ref={pinchRef}
                       minPointers={2}
-                      //simultaneousHandlers={rotationRef}
+                      simultaneousHandlers={rotationRef}
+                      collapsable={false}
                       onGestureEvent={pinchGestureEvent}
                       onHandlerStateChange={pinchStateChange}>
                       <Animated.Image
                         source={require('./car.png')}
                         style={{
                           transform: [
-                            {scale: scale},
+                            {scale: _scale},
                             {rotate: _rotateStr}
                           ],
                           width: SIZE, 
